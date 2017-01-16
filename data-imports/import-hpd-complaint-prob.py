@@ -1,0 +1,115 @@
+#!/usr/bin/env python
+
+import os
+import os.path
+import sys
+import logging
+
+from clean_utils import *
+from utils import *
+
+mkdir_p(BASE_DIR)
+
+logging.basicConfig(format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s',
+    datefmt='%H:%M:%S',
+    stream=sys.stdout,
+    level=logging.INFO)
+log = logging.getLogger(__name__)
+
+"""
+HPD Complaints Problems import
+"""
+
+description = "HPD Complaint Problems"
+
+table_name = 'hpd_complaint_prob'
+
+dtype_dict = {
+    'ProblemID':             'int64',
+    'ComplaintID':           'int64',
+    'UnitTypeID':            'int64',
+    'UnitType':             'object',
+    'SpaceTypeID':           'int64',
+    'SpaceType':            'object',
+    'TypeID':                'int64',
+    'Type':                 'object',
+    'MajorCategoryID':       'int64',
+    'MajorCategory':        'object',
+    'MinorCategoryID':       'int64',
+    'MinorCategory':        'object',
+    'CodeID':                'int64',
+    'Code':                 'object',
+    'StatusID':              'int64',
+    'Status':               'object',
+    'StatusDate':           'object',
+    'StatusDescription':    'object',
+}
+
+truncate_columns = ['statusdescription']
+
+date_time_columns = ['statusdate']
+
+keep_cols = [
+    'ProblemID',
+    'ComplaintID',
+    'UnitTypeID',
+    'UnitType',
+    'SpaceTypeID',
+    'SpaceType',
+    'TypeID',
+    'Type',
+    'MajorCategoryID',
+    'MajorCategory',
+    'MinorCategoryID',
+    'MinorCategory',
+    'CodeID',
+    'Code',
+    'StatusID',
+    'Status',
+    'StatusDate',
+    'StatusDescription'
+]
+
+
+def main():
+    args = get_common_arguments('Import hpd complaint problems dataset.')
+
+    if not args.SKIP_IMPORT:
+        import_csv(args)
+
+    # no sql cleanup required !?
+
+
+def import_csv(args):
+    csv_dir = os.path.join(BASE_DIR, table_name)
+    mkdir_p(csv_dir)
+
+    csv_file = os.path.join(csv_dir, "hpd_complaint_problems.csv")
+
+    if not os.path.isfile(csv_file) or args.BUST_DISK_CACHE:
+        log.info("DL-ing HPD Complaint Problems")
+        download_file("https://data.cityofnewyork.us/api/views/a2nx-4u46/rows.csv?accessType=DOWNLOAD",
+                csv_file)
+    else:
+        log.info("HPD Complaint Problems exists, moving on...")
+
+    pickle = os.path.join(csv_dir, 'df_complaint_problems.pkl')
+
+    chunk_size = 5000
+
+    hpd_csv2sql(
+                description,
+                args,
+                csv_file,
+                table_name,
+                dtype_dict,
+                truncate_columns,
+                date_time_columns,
+                keep_cols,
+                pickle,
+                chunk_size
+               )
+
+
+if __name__ == "__main__":
+    main()
